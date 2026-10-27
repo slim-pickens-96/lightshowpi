@@ -33,17 +33,20 @@ On the Pi, run:
 ```bash
 sudo apt update
 sudo apt install -y git
-git clone <repository-url> lightshowpi
+git clone https://github.com/slim-pickens-96/lightshowpi.git lightshowpi
 cd lightshowpi
 sudo ./install.sh
 ```
 
-The `<repository-url>` is wherever this modernized version is published (see
-[Packaging](PACKAGING.md)). You can also unpack a release tarball:
+The project is at <https://github.com/slim-pickens-96/lightshowpi>. Instead
+of `git clone`, you can download a release from the
+[Releases page](https://github.com/slim-pickens-96/lightshowpi/releases):
 
 ```bash
-tar xzf lightshowpi-<version>.tar.gz
-cd lightshowpi-<version>
+wget https://github.com/slim-pickens-96/lightshowpi/archive/refs/tags/v3.2.0-modernized.tar.gz
+tar xzf v3.2.0-modernized.tar.gz
+mv lightshowpi-3.2.0-modernized lightshowpi
+cd lightshowpi
 sudo ./install.sh
 ```
 

@@ -27,7 +27,7 @@ and they make it install and run on current systems:
 
 ```bash
 sudo apt install -y git
-git clone <repository-url> ~/lightshowpi      # or unpack a release tarball
+git clone https://github.com/slim-pickens-96/lightshowpi.git ~/lightshowpi
 cd ~/lightshowpi
 sudo ./install.sh                  # add --with-service to start at boot
 cp config/overrides.cfg.example config/overrides.cfg
