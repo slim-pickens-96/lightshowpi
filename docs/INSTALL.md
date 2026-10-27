@@ -183,6 +183,58 @@ music more closely. To prepare all songs in advance, run
 
 The old `bin/` scripts still work as before.
 
+### Web interface
+
+The web interface (microweb) lets you control the show from a phone or
+computer on the same network.
+
+```bash
+lightshowpi web                   # starts in the background, on port 80
+# then open http://<your-pi's-address>/   (find it with: hostname -I)
+bin/stop_microweb                 # stop it
+```
+
+| Page | What it does |
+|------|--------------|
+| Main controls | Volume, **Lights ON** / **Lights OFF**, **START** the show / **Play Next**, and the song that's playing now |
+| Playlist | Lists the songs in the current playlist; tap one to play it |
+| Directory Play | Choose, create or upload a music folder, edit song names, and play or loop that folder |
+| Settings (gear icon) | Edit songs, upload a song into the playlist folder, show the config, choose which config file to use |
+| Tools (tools icon) | Switch each channel on or off; reboot or shut down the Pi |
+
+Notes:
+
+* **It runs as root.** It uses port 80, and its buttons control the GPIO pins,
+  so `lightshowpi web` starts it with `sudo`. It has no password, so use it
+  only on a network you trust. Don't forward port 80 to the internet.
+* **Python 3.13 and newer** (trixie) need the `cgi` module from
+  `python3-legacy-cgi`. The installer adds it, and `lightshowpi doctor` reports
+  it as `Web interface (legacy-cgi)`.
+* **Volume shows "n/a"** if `bin/vol` can't find a mixer control for your
+  sound card. This can happen with some USB or HDMI audio. Everything else still
+  works; set the volume with `alsamixer` instead.
+* **START** also starts the text-message checker. If the SMS feature isn't
+  installed (`--with-sms`), that only writes an error to the log. The show
+  isn't affected.
+* **Reboot / Shutdown** on the Tools page really reboot or shut down the Pi.
+
+This version fixes four problems in the original web interface on current
+Raspberry Pi OS:
+
+| Problem in the original | Fix |
+|---|---|
+| **Lights ON / OFF did nothing.** The pages ran a `python` command, which bookworm and trixie don't have. | The pages use the same Python as the web server (the installed `.venv`). |
+| **Settings and Directory Play showed a Python error.** They expected a user called `pi`, which Raspberry Pi OS has not created by default since 2022. | Uploaded and edited files are given to whoever owns the LightShow Pi folder. |
+| **The main page showed a Python error** when `overrides.cfg` didn't list every setting. | It reads `defaults.cfg` first, then your overrides, like the rest of LightShow Pi. |
+| **The main page showed a Python error** when the volume couldn't be read. | The volume shows "n/a" instead. |
+
+These were tested by running the web interface with simulated lights and no
+sound card, and checking all five pages in a browser. The buttons were also
+tested: Lights ON/OFF, a single channel on the Tools page, and START, which
+played the sample songs. Automated tests in `tests/test_web.py` cover them too.
+The web interface has not yet been tried on a real Pi or phone. See
+[TEST_REPORT.md](TEST_REPORT.md).
+
 ### Starting the show automatically
 
 **systemd (recommended):**
