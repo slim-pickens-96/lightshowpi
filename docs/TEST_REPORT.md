@@ -87,7 +87,7 @@ Extra arm64 checks:
 | `bash -n` on all shell scripts | clean |
 | Copy of the project at `/tmp/lsp copy` (a space in the path): `bin/start_playlist_once "/tmp/pl dir/.playlist"` and `bin/play "/tmp/pl dir/t one.mp3"` | both exit 0, `.sync`/`.cfg` written |
 | `tools/sync_file_generator.py` on a folder containing `My Song.mp3` | exit 0; writes `.sync`, `.cfg` and a playlist |
-| `tools/build_release.sh`, then extracting the tarball and running tests from it | see [PACKAGING.md](PACKAGING.md) and the release section below |
+| `tools/build_release.sh`, then `sha256sum -c`, extracting to `/tmp/rel`, `LSP_OS_RELEASE=<trixie os-release> ./install.sh --dry-run --with-service`, and pytest from the extracted tree (Python 3.13) | checksum OK; no `.venv`, `overrides.cfg`, `.sync` or cache files in the tarball; dry run exit 0 ("nothing was changed"); **140 passed, 1 skipped** |
 
 ## Failed during testing (and fixed)
 
