@@ -1090,6 +1090,13 @@ class CGIHTTPRequestHandler(SimpleHTTPRequestHandler):
                     pass
                 os.dup2(self.rfile.fileno(), 0)
                 os.dup2(self.wfile.fileno(), 1)
+                # LightShow Pi: run Python CGI scripts with the same
+                # interpreter (and virtual environment) as the web server,
+                # instead of relying on the script's #! line.
+                with open(scriptfile, 'rb') as script:
+                    first_line = script.readline()
+                if b'python' in first_line:
+                    os.execve(sys.executable, [sys.executable, scriptfile] + args[1:], env)
                 os.execve(scriptfile, args, env)
             except:
                 self.server.handle_error(self.request, self.client_address)

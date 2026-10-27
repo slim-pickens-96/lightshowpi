@@ -28,7 +28,11 @@ import os.path
 from numpy import *
 import math
 
-from rpi_audio_levels import AudioLevels
+try:
+    # Optional GPU FFT (VideoCore IV only).  See use_gpu in defaults.cfg.
+    from rpi_audio_levels import AudioLevels
+except Exception:  # ImportError, or a failure loading the GPU library
+    AudioLevels = None
 
 
 class FFT(object):
@@ -83,8 +87,17 @@ class FFT(object):
         self.config = configparser.RawConfigParser(allow_no_value=True)
         self.config_filename = ""
         self.use_gpu = use_gpu
-        if (self.use_gpu):
-            self.audio_levels = AudioLevels(math.log(chunk_size / 2, 2), num_bins)
+        if self.use_gpu and AudioLevels is None:
+            logging.warning("use_gpu = True but the rpi_audio_levels GPU module is not "
+                            "installed; using the CPU (numpy) FFT instead.")
+            self.use_gpu = False
+        if self.use_gpu:
+            try:
+                self.audio_levels = AudioLevels(math.log(chunk_size / 2, 2), num_bins)
+            except Exception as error:
+                logging.warning("GPU FFT could not be started (%s); using the CPU "
+                                "(numpy) FFT instead.", error)
+                self.use_gpu = False
 
         fl = array(self.frequency_limits)
         self.piff = ((fl * self.chunk_size) / self.sample_rate).astype(int)
@@ -220,7 +233,7 @@ class FFT(object):
         self.config_filename = cache_filename.replace(".sync", ".cfg")
 
         if not os.path.isfile(self.config_filename):
-            logging.warn("No cached config data found")
+            logging.warning("No cached config data found")
             return False
         else:
             has_config = True
@@ -266,7 +279,7 @@ class FFT(object):
 
         if fft_cache != fft_current:
             has_config = False
-            logging.warn("Cached config data does not match")
+            logging.warning("Cached config data does not match")
 
         return has_config
 

@@ -10,12 +10,8 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# Check that the home environment variable is set
-if [ -z ${SYNCHRONIZED_LIGHTS_HOME} ]; then
-    cat $DIR/env_error_msg
-    exit 1
-fi 
+. "$DIR/lightshowpi-env.sh"
 
-$SYNCHRONIZED_LIGHTS_HOME/bin/stop_music_and_lights $$
-$SYNCHRONIZED_LIGHTS_HOME/bin/play_sms $* &
-$SYNCHRONIZED_LIGHTS_HOME/bin/check_sms $* &
+"$SYNCHRONIZED_LIGHTS_HOME/bin/stop_music_and_lights" $$
+"$SYNCHRONIZED_LIGHTS_HOME/bin/play_sms" "$@" &
+"$SYNCHRONIZED_LIGHTS_HOME/bin/check_sms" "$@" &

@@ -1,0 +1,48 @@
+# LightShow Pi settings - copy this file to overrides.cfg and edit it:
+#
+#     cp config/overrides.cfg.example config/overrides.cfg
+#     nano config/overrides.cfg
+#
+# Anything you put here overrides config/defaults.cfg (which documents every
+# option).  Don't edit defaults.cfg itself - it is replaced when you upgrade.
+# After editing, check your settings with:   lightshowpi doctor
+
+[hardware]
+# The pins your relay board / SSRs are connected to, one per channel.
+# These are WiringPi pin numbers (run "lightshowpi pins" for a chart).
+# WiringPi 0-7 are physical header pins 11, 12, 13, 15, 16, 18, 22, 7.
+gpio_pins = 0,1,2,3,4,5,6,7
+
+# onoff for relays / SSRs.  pwm only for loads that can be dimmed (LEDs, DC).
+pin_modes = onoff
+
+# Most cheap relay boards switch ON when the pin is LOW: set this to True for them.
+active_low_mode = False
+
+# Leave on auto. lgpio is used on every Raspberry Pi (including the Pi 5).
+gpio_backend = auto
+
+# Set to bcm if you prefer the "GPIO17"-style numbers printed on pinout charts.
+pin_numbering = wiringpi
+
+[lightshow]
+# Where the sound goes.  "default" is usually right.  List devices with: aplay -L
+# Examples: sysdefault:CARD=Headphones (3.5mm jack on Pi 1-4),
+#           plughw:CARD=vc4hdmi0 (HDMI), plughw:CARD=Device (USB sound card)
+audio_out_card = default
+
+# The songs to play.  Make a playlist with:
+#     lightshowpi playlist-generate /home/pi/lightshowpi/music/mysongs
+playlist_path = $SYNCHRONIZED_LIGHTS_HOME/music/sample/.playlist
+
+randomize_playlist = False
+
+[fm]
+# FM transmitter on GPIO4 (Pi 1-4 only, install with: sudo ./install.sh --with-fm).
+# Check that broadcasting on FM is legal where you live.
+fm = False
+frequency = 107.7
+
+[audio_processing]
+# CPU FFT (works on every Pi).  Only the Pi 1/2/3/Zero GPU can do use_gpu = True.
+use_gpu = False

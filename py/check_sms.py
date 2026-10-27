@@ -280,7 +280,7 @@ class Sms(Thread):
                             self.voice.send_sms(msg['from'], str(part))
                             time.sleep(2)
                 except ValidationError as v_error:
-                    logging.warn(
+                    logging.warning(
                         str(v_error) + ': Error sending sms response (command still executed)',
                         exc_info=1)
 

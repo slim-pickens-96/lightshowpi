@@ -1,32 +1,72 @@
-[http://lightshowpi.org/](http://lightshowpi.org/)
+# LightShow Pi (modernized)
 
-All files here are free to use under the BSD License (see the LICENSE file for details).  All we
-ask in return is that you send any updates / improvements you may make to them back to us so 
-that we can all benefit from your improvements!
+Synchronize Christmas or holiday lights to music with a Raspberry Pi: GPIO
+relays/SSRs, LED strips, and optional FM broadcast.
 
-Join us on our [Reddit page](https://www.reddit.com/r/LightShowPi/) and / or [Facebook page](https://www.facebook.com/lightshowpi) as well to share your experiences using lightshowPi, as well as videos of your shows!
+This is a **community-modernized version** of
+[LightShow Pi](https://bitbucket.org/togiles/lightshowpi) by Todd Giles and
+contributors ([lightshowpi.org](https://www.lightshowpi.org/)). The light show
+itself is unchanged. Changes are listed in [docs/CHANGES.md](docs/CHANGES.md),
+and they make it install and run on current systems:
 
-Thanks, and enjoy ;)
+- **Raspberry Pi OS / Debian bookworm and trixie**, Python 3.11–3.14.
+- **Pi 5, Pi 500, Pi 400, CM4/CM5 and Zero 2 W** are detected correctly.
+- **No compiling, no dead download links, no `--break-system-packages`**: dependencies come from apt plus a local `.venv`.
+- **lgpio** GPIO back end (works on the Pi 5); WiringPi is optional.
+- **ffmpeg** audio decoding (works without `audioop`, which Python 3.13 removed).
+- One `lightshowpi` command, a `lightshowpi doctor` self-check, an optional systemd service, and a clean `uninstall.sh`.
 
-Todd Giles ([todd@lightshowpi.org](mailto:todd@lightshowpi.org))
+> **Hardware status:** this version has been tested with an automated test
+> suite and in clean bookworm/trixie (amd64 and arm64) installs, using
+> simulated GPIO and audio. It has **not yet been tested on a physical
+> Raspberry Pi with lights attached**. See
+> [docs/TEST_REPORT.md](docs/TEST_REPORT.md) and
+> [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
 
-Installation / Getting Started
-==============================
+## Quick start
 
-Please visit the [Getting Started Page](http://lightshowpi.org/getting-started) for details on getting
-started.  Or for those who want to just jump on in, feel free to run the install.sh script and go 
-for it :-)
+```bash
+sudo apt install -y git
+git clone <repository-url> ~/lightshowpi      # or unpack a release tarball
+cd ~/lightshowpi
+sudo ./install.sh                  # add --with-service to start at boot
+cp config/overrides.cfg.example config/overrides.cfg
+lightshowpi doctor                 # checks OS, GPIO, pins, audio, playlist
+lightshowpi test                   # blinks each channel in turn
+lightshowpi playlist               # plays the sample songs
+```
 
-Directory Structure
-===================
+## Documentation
 
-* bin/* - Various bash scripts / tools to aid in playing songs, controlling volume, etc...
-* config/* - Configuration files.
-* crontab/synchronized_lights - Add these via 'sudo crontab -e' to start / stop the lightshow automatically
-* logs/* - Log files will be output here.
-* music/* - Music files go here (includes some samples to get you started).
-* py/* - All the python code.
-* tools/* - Various tools helpful in configuring / using / etc... LightshowPi
+| Guide | Contents |
+|---|---|
+| [docs/INSTALL.md](docs/INSTALL.md) | Requirements and supported hardware, installation, first run, pin numbers, audio, configuring a show, commands, autostart, upgrading, uninstalling |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Fixes for common installation and runtime problems |
+| [docs/CHANGES.md](docs/CHANGES.md) | What changed and why (compatibility decisions, file-by-file) |
+| [docs/TEST_REPORT.md](docs/TEST_REPORT.md) | What was tested, how, and the results |
+| [docs/LIMITATIONS.md](docs/LIMITATIONS.md) | Known limitations and remaining work |
+| [docs/PACKAGING.md](docs/PACKAGING.md) | Building and publishing a release |
+
+## Directory structure
+
+* `bin/` - the `lightshowpi` command and helper scripts
+* `config/` - `defaults.cfg` (documents every option) and your `overrides.cfg`
+* `crontab/` - example cron entries (the systemd service is the recommended alternative)
+* `docs/` - documentation
+* `install.sh`, `uninstall.sh`, `install-scripts/` - installer and systemd unit
+* `logs/` - log files
+* `music/` - music files (includes samples to get you started)
+* `py/` - the Python code
+* `tests/` - automated tests (`python -m pytest tests`)
+* `tools/` - playlist and sync-file generators, LED test, audio-in card helper
+* `web/` - the microweb web interface
+
+## License and community
+
+All files are free to use under the BSD License (see `LICENSE`). The
+original authors ask that you send improvements back so everyone can
+benefit. Join the community on [Reddit](https://www.reddit.com/r/LightShowPi/)
+and [Facebook](https://www.facebook.com/lightshowpi).
 
 Contributors
 ============
@@ -55,6 +95,11 @@ A huge thanks to all those that have contributed to the Lightshow Pi codebase:
 
 Release Notes
 ============
+
+2026 :: Version 3.2.0-modernized
+-------------------------------
+
+* Modern Raspberry Pi OS (bookworm/trixie) and Python 3.11-3.14 support, new installer, lgpio GPIO, ffmpeg audio, Pi 5 detection, doctor and service. See docs/CHANGES.md.
 
 2021/11/11 :: Version 3.21
 -------------------------------

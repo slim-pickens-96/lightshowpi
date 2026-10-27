@@ -35,7 +35,7 @@ from multiprocessing.managers import BaseManager
 from collections import defaultdict
 
 import configuration_manager
-import led_module
+import gpio_backend
 import networking
 
 args = None
@@ -60,15 +60,36 @@ atexit.register(exit_function)
 signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 # Test if running on a RaspberryPi
-is_a_raspberryPI = Platform.platform_detect() == 1
+is_a_raspberryPI = Platform.platform_detect() == Platform.RASPBERRY_PI
 
-if is_a_raspberryPI:
-    import wiringpipy as wiringpi
-else:
-    # if this is not a RPi
-    import wiring_pi as wiringpi
+# The GPIO back end (lgpio, wiringpi or simulated) is chosen once the
+# configuration has been read, see Hardware.__init__ and gpio_backend.py
+wiringpi = None
 
-    logging.debug("Not running on a raspberryPI")
+
+def init_gpio_backend(config):
+    """Select the GPIO back end from the [hardware] configuration."""
+    global wiringpi
+    hw = config.hardware
+    needs_wiringpi = bool(hw.devices) or bool(hw.piglow)
+    revision = 2
+    if is_a_raspberryPI:
+        try:
+            revision = Platform.pi_revision()
+        except RuntimeError:
+            revision = 2
+    try:
+        wiringpi = gpio_backend.select_backend(hw.gpio_backend,
+                                               is_pi=is_a_raspberryPI,
+                                               needs_wiringpi=needs_wiringpi,
+                                               numbering=hw.pin_numbering,
+                                               revision=revision)
+    except gpio_backend.GPIOBackendError as error:
+        logging.error(str(error))
+        print("\nERROR: " + str(error) + "\n", file=sys.stderr)
+        sys.exit(2)
+    logging.info("Using GPIO back end: %s", wiringpi.name)
+    return wiringpi
 
 class LEDManager(BaseManager):
     pass
@@ -79,6 +100,7 @@ class Hardware(object):
         self.cm = configuration_manager.Configuration(param_config=param_config)
         global cm
         cm = self.cm
+        init_gpio_backend(cm)
 
         # list to store the Channels instances in
         self.channels = list()
@@ -90,6 +112,16 @@ class Hardware(object):
 
         self.led = None
         if self.cm.configs.led:
+            # LED strip support is optional; only load it when it is configured
+            try:
+                import led_module
+            except ImportError as error:
+                message = ("LED strips are configured (led_config in [configs]) but LED "
+                           "support is not installed (%s). Fix: sudo ./install.sh --with-led"
+                           % error)
+                logging.error(message)
+                print("\nERROR: " + message + "\n", file=sys.stderr)
+                sys.exit(2)
             self.led = list()
             if self.cm.configs.led_multiprocess:
                 LEDManager.register('LED', led_module.Led)      
@@ -328,10 +360,17 @@ class Hardware(object):
         self.network.unset_playing()
         self.turn_off_lights()
         self.set_pins_as_inputs()
+        if wiringpi is not None and hasattr(wiringpi, "close"):
+            wiringpi.close()
 
     def initialize(self,reset=True):
         """Set pins as outputs and start all lights in the off state."""
-        wiringpi.wiringPiSetupPY()
+        try:
+            wiringpi.wiringPiSetupPY()
+        except gpio_backend.GPIOBackendError as error:
+            logging.error(str(error))
+            print("\nERROR: " + str(error) + "\n", file=sys.stderr)
+            sys.exit(2)
         self.enable_device()
         self.set_pins_as_outputs()
         if reset:
@@ -863,7 +902,10 @@ def step():
 
 
 def test():
-    model, header = Platform.get_model()
+    try:
+        model, header = Platform.get_model()
+    except RuntimeError:
+        model, header = "(not detected - simulated GPIO)", Platform.header40
 
     print("We are going to do some basic tests to make sure")
     print("your hardware is working as expected.")

@@ -1,0 +1,8 @@
+# Core Python requirements that are NOT provided by Debian / Raspberry Pi OS
+# packages.  numpy, pyalsaaudio, mutagen and lgpio come from apt
+# (python3-numpy, python3-alsaaudio, python3-mutagen, python3-lgpio) and are
+# visible in the virtual environment through --system-site-packages.
+#
+# Python 3.13 removed the cgi/cgitb modules used by the web interface;
+# legacy-cgi is the maintained drop-in replacement (Debian: python3-legacy-cgi).
+legacy-cgi==2.6.4 ; python_version >= "3.13"

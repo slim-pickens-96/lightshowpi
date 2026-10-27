@@ -2,4 +2,4 @@
 #
 # Get the amount of MB in swap
 
-echo "Free swap: "`free -m | grep Swap | awk '{print $4}'`"MB"
+echo "Free swap: $(free -m | awk '/^Swap:/ {print $4}')MB"

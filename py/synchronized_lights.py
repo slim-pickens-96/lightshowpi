@@ -63,7 +63,6 @@ numpy: for FFT calculation
 import configparser
 import argparse
 import atexit
-import audioop
 from collections import deque
 import errno
 import json
@@ -79,12 +78,14 @@ import wave
 import curses
 import bright_curses
 import mutagen
+import shlex
 from queue import Queue, Empty
 from threading import Thread
 import csv
 
 import alsaaudio as aa
-import decoder
+import alsa_compat  # pyalsaaudio 0.8 (bookworm) .. 0.10+ (trixie)
+import audio_decoder as decoder  # ffmpeg based, replaces decoder.py
 import numpy as np
 from numpy import where, clip, round, nan_to_num
 
@@ -98,8 +99,9 @@ import RunningStats
 HOME_DIR = os.getenv("SYNCHRONIZED_LIGHTS_HOME")
 
 if not HOME_DIR:
-    print("Need to setup SYNCHRONIZED_LIGHTS_HOME environment variable, see readme")
-    sys.exit()
+    # Default to the folder above py/ (configuration_manager does the same)
+    HOME_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    os.environ["SYNCHRONIZED_LIGHTS_HOME"] = HOME_DIR
 
 LOG_DIR = HOME_DIR + '/logs'
 
@@ -296,6 +298,11 @@ class Lightshow(object):
 
     def set_fm(self):
         pi_version = Platform.pi_version()
+        if pi_version is not None and pi_version >= 5:
+            log.error("The FM transmitter programs do not support the Raspberry Pi 5 "
+                      "or later (no GPCLK FM support). Set enabled = False in the [fm] "
+                      "section of overrides.cfg and use an audio output instead.")
+            sys.exit(2)
         srate = str(int(self.sample_rate / (1 if self.num_channels > 1 else 2)))
 
         if os.path.exists(cm.fm.fmfifo):
@@ -383,11 +390,10 @@ class Lightshow(object):
             if cm.lightshow.mode == 'stream-in':
                 self.num_channels = 2
 
-            output_device = aa.PCM(aa.PCM_PLAYBACK, aa.PCM_NORMAL, cm.lightshow.audio_out_card,
-                                   channels=self.num_channels,
-                                   rate=self.sample_rate,
-                                   format=aa.PCM_FORMAT_S16_LE,
-                                   periodsize=self.chunk_size)
+            output_device = alsa_compat.open_pcm(aa.PCM_PLAYBACK, aa.PCM_NORMAL,
+                                                 cm.lightshow.audio_out_card,
+                                                 self.num_channels, self.sample_rate,
+                                                 aa.PCM_FORMAT_S16_LE, self.chunk_size)
 
             self.output = lambda raw_data: output_device.write(raw_data)
 
@@ -397,11 +403,10 @@ class Lightshow(object):
 
         if cm.lightshow.mode == 'audio-in':
             # Open the input stream from default input device
-            self.streaming = aa.PCM(aa.PCM_CAPTURE, aa.PCM_NORMAL, cm.lightshow.audio_in_card,
-                                    channels=self.num_channels,
-                                    rate=self.sample_rate,
-                                    format=aa.PCM_FORMAT_S16_LE,
-                                    periodsize=self.chunk_size)
+            self.streaming = alsa_compat.open_pcm(aa.PCM_CAPTURE, aa.PCM_NORMAL,
+                                                  cm.lightshow.audio_in_card,
+                                                  self.num_channels, self.sample_rate,
+                                                  aa.PCM_FORMAT_S16_LE, self.chunk_size)
 
             stream_reader = lambda: self.streaming.read()[-1]
 
@@ -509,7 +514,7 @@ class Lightshow(object):
             if len(data) == self.chunk_size:
                 # if the maximum of the absolute value of all samples in
                 # data is below a threshold we will disregard it
-                audio_max = audioop.max(data, 2)
+                audio_max = decoder.peak(data)
                 if audio_max < 250:
                     # we will fill the matrix with zeros and turn the lights off
                     matrix = np.zeros(cm.hardware.gpio_len, dtype="float32")
@@ -790,6 +795,13 @@ class Lightshow(object):
 
         if args.playlist is not None and args.file is None:
             most_votes = [None, None, []]
+            if not os.path.isfile(args.playlist):
+                msg = ("Playlist not found: '%s'. Set playlist_path in your overrides.cfg, "
+                       "or create one with 'lightshowpi playlist-generate <music folder>'."
+                       % args.playlist)
+                log.error(msg)
+                print(msg, file=sys.stderr)
+                sys.exit(2)  # configuration error: retrying will not help
             songs = cm.get_playlist(args.playlist)
             for song in songs:
                 if len(song[2]) > 0:
@@ -838,6 +850,11 @@ class Lightshow(object):
         self.song_filename = self.song_filename.replace("$SYNCHRONIZED_LIGHTS_HOME", cm.home_dir)
 
         filename = os.path.abspath(self.song_filename)
+        if not os.path.isfile(filename):
+            log.error("Song file not found: '%s'. Check the path, or the playlist entry "
+                      "if you are playing a playlist.", self.song_filename)
+            print("Song file not found: '%s'" % self.song_filename, file=sys.stderr)
+            sys.exit(1)
         
         self.sequence_filename = filename.rsplit('.',1)[0] + '.csv'
         if os.path.isfile(self.sequence_filename):
@@ -853,7 +870,7 @@ class Lightshow(object):
         self.cache_filename = \
             os.path.dirname(filename) + "/." + os.path.basename(self.song_filename) + ".sync"
 
-        os.system("/bin/echo \"\" >" + cm.home_dir + "/logs/now_playing.txt")
+        now_playing_file = os.path.join(cm.home_dir, "logs", "now_playing.txt")
         metadata = mutagen.File(self.song_filename, easy=True)
         if not metadata is None:
             if "title" in metadata and "artist" in metadata:
@@ -863,10 +880,15 @@ class Lightshow(object):
             else:
                 now_playing = "Now Playing Unknown"
             if cm.lightshow.songname_command:
-                os.system(cm.lightshow.songname_command + " \"" + now_playing + "\"")
+                # quote the title so song tags cannot inject shell commands
+                os.system(cm.lightshow.songname_command + " " + shlex.quote(now_playing))
         else:
             now_playing = "Now Playing " + os.path.basename(self.song_filename)
-        os.system("/bin/echo " + " \"" + now_playing + "\"" + " >" + cm.home_dir + "/logs/now_playing.txt")
+        try:
+            with open(now_playing_file, "w") as now_playing_out:
+                now_playing_out.write(now_playing + "\n")
+        except OSError as error:
+            log.warning("Could not write %s: %s", now_playing_file, error)
 
     def play_song(self):
         """Play the next song from the play list (or --file argument)."""

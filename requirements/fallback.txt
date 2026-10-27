@@ -1,0 +1,6 @@
+# Used by install.sh only when the Debian python3-numpy / python3-alsaaudio /
+# python3-mutagen packages are not available (unsupported systems).
+# pyalsaaudio is compiled: it needs  sudo apt install libasound2-dev build-essential
+numpy>=1.24,<3
+pyalsaaudio>=0.10,<0.12
+mutagen>=1.46,<2

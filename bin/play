@@ -13,15 +13,9 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# Check that the home environment variable is set
-if [ -z ${SYNCHRONIZED_LIGHTS_HOME} ]; then
-    cat $DIR/env_error_msg
-    exit 1
-fi 
+. "$DIR/lightshowpi-env.sh"
 
-IFS=$(echo -en "\n\b")
-for f in $@
+for f in "$@"
 do
-  filename=$(basename "$f")
-  sudo python $SYNCHRONIZED_LIGHTS_HOME/py/synchronized_lights.py --file="$f"
+  lsp_python "$SYNCHRONIZED_LIGHTS_HOME/py/synchronized_lights.py" --file="$f"
 done

@@ -1,0 +1,7 @@
+# Legacy SMS (Google Voice) and Twitter features (install.sh --with-sms).
+# Both services have changed a lot since these libraries were written; these
+# features are installed for completeness but have NOT been verified to work.
+twython==3.9.1
+emoji>=2,<3
+beautifulsoup4>=4
+pygooglevoice @ git+https://github.com/pettazz/pygooglevoice.git@d5662f6d9fb2e023e75553044bc5bfae0be61815

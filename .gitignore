@@ -17,3 +17,18 @@ sftp-config.json
 
 # Ignore all LED configs except default
 Led[0-9].cfg
+
+# Modernized installer
+.venv/
+logs/install.log
+config/overrides.cfg
+config/state.cfg
+__pycache__/
+.pytest_cache/
+dist/
+logs/*.log
+logs/*.dbg
+logs/now_playing.txt
+# generated per-song cache files
+*.sync
+music/**/.*.cfg

@@ -1,0 +1,47 @@
+#!/bin/bash
+#
+# Run the show in the foreground, one song after another, until stopped.
+# Used by lightshowpi.service; can also be run by hand with sudo.
+# Extra arguments are passed to synchronized_lights.py (e.g. --config=x.cfg).
+
+DIR="$( cd "$( dirname "$(readlink -f "${BASH_SOURCE[0]}")" )" && pwd )"
+. "$DIR/lightshowpi-env.sh"
+
+child=0
+stop() {
+    [ "$child" -ne 0 ] && kill "$child" 2>/dev/null && wait "$child" 2>/dev/null
+    exit 0
+}
+trap stop TERM INT
+
+# Give up after this many quick failures in a row (a crash loop), e.g. when a
+# library ends the process itself before LightShow Pi can report the problem.
+MAX_QUICK_FAILURES="${LIGHTSHOWPI_MAX_QUICK_FAILURES:-5}"
+QUICK_SECONDS=10
+failures=0
+
+while true; do
+    started=$SECONDS
+    lsp_python "$SYNCHRONIZED_LIGHTS_HOME/py/synchronized_lights.py" "$@" &
+    child=$!
+    wait "$child"
+    status=$?
+    child=0
+    # exit codes 2 (configuration / hardware error) are not worth retrying
+    if [ "$status" -eq 2 ]; then
+        echo "LightShow Pi stopped because of a configuration error (see above)." >&2
+        exit 2
+    fi
+    if [ "$status" -ne 0 ] && [ $((SECONDS - started)) -lt "$QUICK_SECONDS" ]; then
+        failures=$((failures + 1))
+        if [ "$failures" -ge "$MAX_QUICK_FAILURES" ]; then
+            echo "LightShow Pi stopped: it failed $failures times in a row within" \
+                 "${QUICK_SECONDS}s each (exit code $status; see above)." \
+                 "Run 'lightshowpi doctor' to find the problem." >&2
+            exit 2
+        fi
+    else
+        failures=0
+    fi
+    sleep 1
+done

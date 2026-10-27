@@ -1,0 +1,2 @@
+# Development / test requirements:  .venv/bin/pip install -r requirements/dev.txt
+pytest>=7

@@ -9,7 +9,6 @@
 # enter the path to this playlist file in your overrides.cfg and 
 # lightshowpi will use this as your new playlist
 
-import decoder
 import glob
 import mutagen
 import numpy as np
@@ -19,9 +18,9 @@ import wave
 
 HOME_DIR = os.getenv("SYNCHRONIZED_LIGHTS_HOME")
 if not HOME_DIR:
-    print("Need to setup SYNCHRONIZED_LIGHTS_HOME environment variable, "
-          "see readme")
-    sys.exit()
+    # default to the LightShow Pi folder this script is in
+    HOME_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    os.environ["SYNCHRONIZED_LIGHTS_HOME"] = HOME_DIR
 
 # hack to get the configuration_manager and fft modules to load
 # from a different directory
@@ -31,6 +30,7 @@ path = list(sys.path)
 sys.path.insert(0, HOME_DIR + "/py")
 
 # import the configuration_manager and fft now that we can
+import audio_decoder as decoder  # ffmpeg based, replaces decoder.py
 import fft
 
 import hardware_controller
@@ -57,7 +57,7 @@ try:
 except:
     _CUSTOM_CHANNEL_FREQUENCIES = 0
 
-CHUNK_SIZE = 2048  # Use a multiple of 8 (move this to config)
+CHUNK_SIZE = cm.audio_processing.chunk_size  # same as the show
 
 def calculate_channel_frequency(min_frequency,
                                 max_frequency,
@@ -111,11 +111,10 @@ def cache_song(song_filename):
     # Initialize FFT stats
     matrix = [0 for _ in range(GPIOLEN)] # get length of gpio and assign it to a variable
 
-    # Set up audio
-    if song_filename.endswith('.wav'):
-        musicfile = wave.open(song_filename, 'r')
-    else:
-        musicfile = decoder.open(song_filename)
+    # Set up audio exactly like synchronized_lights.py does (16-bit stereo
+    # from audio_decoder), so the show accepts the cache file
+    force_header = any(ext in song_filename for ext in (".mp4", ".m4a", ".m4b"))
+    musicfile = decoder.open(song_filename, force_header)
 
     sample_rate = musicfile.getframerate()
     num_channels = musicfile.getnchannels()
@@ -126,7 +125,9 @@ def cache_song(song_filename):
                        _MIN_FREQUENCY,
                        _MAX_FREQUENCY,
                        _CUSTOM_CHANNEL_MAPPING,
-                       _CUSTOM_CHANNEL_FREQUENCIES)
+                       _CUSTOM_CHANNEL_FREQUENCIES,
+                       2,
+                       cm.audio_processing.use_gpu)
 
     song_filename = os.path.abspath(song_filename)
 
@@ -167,6 +168,11 @@ def cache_song(song_filename):
 
     # Save the cache using numpy savetxt
     np.savetxt(cache_filename, cache_matrix)
+
+    # Save the FFT settings next to it (.song.cfg).  Without this file the
+    # show treats the cache as out of date and analyses the song again.
+    fft_calc.compare_config(cache_filename)
+    fft_calc.save_config()
 
 #### end reuse 
 

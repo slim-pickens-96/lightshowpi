@@ -32,9 +32,16 @@ from collections import defaultdict
 HOME_DIR = os.getenv("SYNCHRONIZED_LIGHTS_HOME")
 
 if not HOME_DIR:
-    print("Need to setup SYNCHRONIZED_LIGHTS_HOME environment variable, "
-          "see readme")
-    sys.exit()
+    # Default to the folder this file lives in (<home>/py/..) so LightShow Pi
+    # works without the environment variable, e.g. when started by systemd.
+    HOME_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    os.environ["SYNCHRONIZED_LIGHTS_HOME"] = HOME_DIR
+
+if not os.path.isfile(os.path.join(HOME_DIR, "config", "defaults.cfg")):
+    print("SYNCHRONIZED_LIGHTS_HOME=%s does not contain config/defaults.cfg. "
+          "Point it at the folder LightShow Pi is installed in." % HOME_DIR,
+          file=sys.stderr)
+    sys.exit(1)
 
 CONFIG_DIR = HOME_DIR + '/config'
 LOG_DIR = HOME_DIR + '/logs'
@@ -68,7 +75,7 @@ class Configuration(object):
         self.playlist_path = None
 
         # path and file locations
-        self.home_dir = os.getenv("SYNCHRONIZED_LIGHTS_HOME")
+        self.home_dir = HOME_DIR
         self.config_dir = self.home_dir + "/config/"
         self.log_dir = self.home_dir + "/logs/"
         self.state_file = self.config_dir + "state.cfg"
@@ -121,7 +128,10 @@ class Configuration(object):
 
         overrides = list()
         if self.param_config:
-            overrides.append(self.config_dir + self.param_config)
+            if os.path.isabs(self.param_config):
+                overrides.append(self.param_config)
+            else:
+                overrides.append(self.config_dir + self.param_config)
         else:
             overrides.append(self.config_dir + "overrides.cfg")
         self.config.read(overrides)
@@ -228,6 +238,10 @@ class Configuration(object):
 
         hrdwr["pwm_range"] = int(self.config.get('hardware', 'pwm_range'))
         hrdwr["piglow"] = self.config.getboolean('hardware', 'piglow')
+        hrdwr["gpio_backend"] = self.config.get('hardware', 'gpio_backend',
+                                                fallback='auto').strip().lower()
+        hrdwr["pin_numbering"] = self.config.get('hardware', 'pin_numbering',
+                                                 fallback='wiringpi').strip().lower()
 
         temp = self.config.get('hardware', 'active_low_mode').split(",")
         if len(temp) != 1:

@@ -7,11 +7,7 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# Check that the home environment variable is set
-if [ -z ${SYNCHRONIZED_LIGHTS_HOME} ]; then
-    cat ${DIR}/env_error_msg
-    exit 1
-fi 
+. "$DIR/lightshowpi-env.sh"
 
 id=$1
 
@@ -20,17 +16,17 @@ if [ -z "$id" ]; then
 fi
 
 for OUTPUT in $(pgrep -f lightshowpi); do
-    if [ ${OUTPUT} != ${id} ] && [ ${OUTPUT} != $$ ]; then
-        out=`ps -p ${OUTPUT} -o cmd`
+    if [ "${OUTPUT}" != "${id}" ] && [ "${OUTPUT}" != $$ ]; then
+        out=$(ps -p "${OUTPUT}" -o cmd)
 
         if [[ ${out} == *"${SYNCHRONIZED_LIGHTS_HOME}"* ]] && [[ ${out} != *"web"* ]]; then
             echo "killing:"
-            echo  ${out}
-            sudo kill ${OUTPUT}
+            echo  "${out}"
+            lsp_sudo kill "${OUTPUT}"
         fi
 
     fi
 done
 
 # Turn off lights and set back to inputs
-sudo python $SYNCHRONIZED_LIGHTS_HOME/py/hardware_controller.py --state=cleanup
+lsp_python "$SYNCHRONIZED_LIGHTS_HOME/py/hardware_controller.py" --state=cleanup

@@ -8,10 +8,6 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# Check that the home environment variable is set
-if [ -z ${SYNCHRONIZED_LIGHTS_HOME} ]; then
-    cat $DIR/env_error_msg
-    exit 1
-fi 
+. "$DIR/lightshowpi-env.sh"
 
-sudo python $SYNCHRONIZED_LIGHTS_HOME/py/check_sms.py
+lsp_python "$SYNCHRONIZED_LIGHTS_HOME/py/check_sms.py"

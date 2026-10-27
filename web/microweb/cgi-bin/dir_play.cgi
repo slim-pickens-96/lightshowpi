@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 #
 # Licensed under the BSD license.  See full license in LICENSE file.
@@ -68,7 +68,7 @@ if message == 'Change Directory':
         state.write(state_fp)
 
 if message == "Create Directory":
-    p = re.compile('^\w+$', re.ASCII)
+    p = re.compile(r'^\w+$', re.ASCII)
     if p.match(directory):
         os.mkdir(music_path + '/' + directory)
         os.chown(music_path + '/' + directory, uid, gid)

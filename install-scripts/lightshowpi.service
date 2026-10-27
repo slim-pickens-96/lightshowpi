@@ -1,0 +1,25 @@
+# LightShow Pi systemd service.  Installed by: sudo ./install.sh --with-service
+# Uses the settings in @INSTALL_DIR@/config/overrides.cfg
+#
+#   sudo systemctl start lightshowpi     start the show now
+#   sudo systemctl stop lightshowpi      stop the show (lights are turned off)
+#   sudo systemctl disable lightshowpi   don't start at boot
+#   journalctl -u lightshowpi            see messages
+[Unit]
+Description=LightShow Pi synchronized music and lights
+After=sound.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=SYNCHRONIZED_LIGHTS_HOME=@INSTALL_DIR@
+ExecStart=@INSTALL_DIR@/bin/lightshowpi-service
+ExecStopPost=@INSTALL_DIR@/bin/lightshowpi cleanup
+Restart=on-failure
+# exit code 2 = configuration or hardware error: fix it, don't restart forever
+RestartPreventExitStatus=2
+RestartSec=10
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

@@ -19,6 +19,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# Modernized for LightShow Pi: board detection now decodes the Raspberry Pi
+# revision code bit-fields instead of matching a fixed list, so new boards
+# (Pi 400, Pi 5, Pi 500, CM4/CM5, Zero 2 W ...) are recognised.  The public
+# functions (platform_detect, pi_version, pi_revision, get_model) keep their
+# original signatures.
+
+import os
 import platform
 import re
 
@@ -28,24 +35,122 @@ RASPBERRY_PI = 1
 BEAGLEBONE_BLACK = 2
 MINNOWBOARD = 3
 
+# Allow tests (and the doctor tool) to point at fake files.
+CPUINFO_PATH = os.environ.get("LIGHTSHOWPI_CPUINFO", "/proc/cpuinfo")
+DT_MODEL_PATH = os.environ.get("LIGHTSHOWPI_DT_MODEL", "/proc/device-tree/model")
+
+# New-style revision code "type" field -> (model name, major version)
+# https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#raspberry-pi-revision-codes
+NEW_STYLE_TYPES = {
+    0x00: ("Model A", 1),
+    0x01: ("Model B", 1),
+    0x02: ("Model A+", 1),
+    0x03: ("Model B+", 1),
+    0x04: ("Pi 2 Model B", 2),
+    0x05: ("Alpha", 1),
+    0x06: ("Compute Module 1", 1),
+    0x08: ("Pi 3 Model B", 3),
+    0x09: ("Pi Zero", 1),
+    0x0a: ("Compute Module 3", 3),
+    0x0c: ("Pi Zero W", 1),
+    0x0d: ("Pi 3 Model B+", 3),
+    0x0e: ("Pi 3 Model A+", 3),
+    0x10: ("Compute Module 3+", 3),
+    0x11: ("Pi 4 Model B", 4),
+    0x12: ("Pi Zero 2 W", 3),
+    0x13: ("Pi 400", 4),
+    0x14: ("Compute Module 4", 4),
+    0x15: ("Compute Module 4S", 4),
+    0x17: ("Pi 5", 5),
+    0x18: ("Compute Module 5", 5),
+    0x19: ("Pi 500", 5),
+    0x1a: ("Compute Module 5 Lite", 5),
+}
+
+# Old-style (pre-2014) revision codes -> model name.  All are Pi 1 boards.
+OLD_STYLE = {}
+for _code in ("0002", "0003", "0004", "0005", "0006", "000d", "000e", "000f"):
+    OLD_STYLE[_code] = "Model B"
+for _code in ("0007", "0008", "0009"):
+    OLD_STYLE[_code] = "Model A"
+for _code in ("0010", "0013"):
+    OLD_STYLE[_code] = "Model B+"
+for _code in ("0012", "0015"):
+    OLD_STYLE[_code] = "Model A+"
+for _code in ("0011", "0014"):
+    OLD_STYLE[_code] = "Compute Module 1"
+
+# 26-pin header boards
+HEADER26_MODELS = ("Model A", "Model B")
+
+
+def _read(path):
+    try:
+        with open(path, "r", errors="replace") as infile:
+            return infile.read()
+    except (IOError, OSError):
+        return ""
+
+
+def revision_code():
+    """Return the board revision code as a lowercase hex string, or None."""
+    cpuinfo = _read(CPUINFO_PATH)
+    match = re.search(r"^Revision\s*:\s*([0-9a-fA-F]+)\s*$", cpuinfo, flags=re.MULTILINE)
+    if not match:
+        return None
+    return match.group(1).lower()
+
+
+def decode_revision(code):
+    """Decode a revision code string into (model name, major version).
+
+    Returns None if the code is not a known Raspberry Pi revision.
+    """
+    if not code:
+        return None
+    try:
+        value = int(code, 16)
+    except ValueError:
+        return None
+
+    if value & (1 << 23):
+        # New-style revision code
+        board_type = (value >> 4) & 0xff
+        if board_type in NEW_STYLE_TYPES:
+            return NEW_STYLE_TYPES[board_type]
+        return ("Unknown Raspberry Pi (type 0x%02x)" % board_type, None)
+
+    # Old-style: last 4 hex digits (leading 1000 means over-volted)
+    short = code[-4:]
+    if short in OLD_STYLE:
+        return (OLD_STYLE[short], 1)
+    return None
+
+
+def device_tree_model():
+    """Return the device-tree model string, e.g. 'Raspberry Pi 5 Model B Rev 1.0'."""
+    return _read(DT_MODEL_PATH).strip("\x00\n ")
+
+
+def is_raspberry_pi():
+    if device_tree_model().startswith("Raspberry Pi"):
+        return True
+    return decode_revision(revision_code()) is not None
+
 
 def platform_detect():
     """Detect if running on the Raspberry Pi or Beaglebone Black and return the
     platform type.  Will return RASPBERRY_PI, BEAGLEBONE_BLACK, or UNKNOWN."""
-    # Handle Raspberry Pi
-    pi = pi_version()
-    if pi is not None:
+    if is_raspberry_pi():
         return RASPBERRY_PI
 
     # Handle Beaglebone Black
-    # TODO: Check the Beaglebone Black /proc/cpuinfo value instead of reading
-    # the platform.
-    plat = platform.platform()
-    if plat.lower().find('armv7l-with-debian') > -1:
+    plat = platform.platform().lower()
+    if plat.find('armv7l-with-debian') > -1:
         return BEAGLEBONE_BLACK
-    elif plat.lower().find('armv7l-with-ubuntu') > -1:
+    elif plat.find('armv7l-with-ubuntu') > -1:
         return BEAGLEBONE_BLACK
-    elif plat.lower().find('armv7l-with-glibc2.4') > -1:
+    elif plat.find('armv7l-with-glibc2.4') > -1:
         return BEAGLEBONE_BLACK
 
     # Handle Minnowboard
@@ -64,64 +169,27 @@ def platform_detect():
 
 def pi_revision():
     """Detect the revision number of a Raspberry Pi, useful for changing
-    functionality like default I2C bus based on revision."""
-    # Revision list available at: http://elinux.org/RPi_HardwareHistory#Board_Revision_History
-    with open('/proc/cpuinfo', 'r') as infile:
-        for line in infile:
-            # Match a line of the form "Revision : 0002" while ignoring extra
-            # info in front of the revision (like 1000 when the Pi was over-volted).
-            match = re.match('Revision\s+:\s+.*(\w{4})$', line, flags=re.IGNORECASE)
-            if match and match.group(1) in ['0000', '0002', '0003']:
-                # Return revision 1 if revision ends with 0000, 0002 or 0003.
-                return 1
-            elif match:
-                # Assume revision 2 if revision ends with any other 4 chars.
-                return 2
-        # Couldn't find the revision, throw an exception.
+    functionality like default I2C bus based on revision.
+
+    Returns 1 for the earliest Model B boards, otherwise 2."""
+    code = revision_code()
+    if code is None:
         raise RuntimeError('Could not determine Raspberry Pi revision.')
+    if code[-4:] in ('0000', '0002', '0003'):
+        return 1
+    return 2
 
 
 def pi_version():
-    """Detect the version of the Raspberry Pi.  Returns either 1, 2 or
-    None depending on if it's a Raspberry Pi 1 (model A, B, A+, B+),
-    Raspberry Pi 2 (model B+), or not a Raspberry Pi.
-    """
-    # Check /proc/cpuinfo for the Hardware field value.
-    # 2708 is pi 1
-    # 2709 is pi 2
-    # Anything else is not a pi.
-    with open('/proc/cpuinfo', 'r') as infile:
-        cpuinfo = infile.read()
-    # Match a line like 'Hardware   : BCM2709'
-    match = re.search('^Hardware\s+:\s+(\w+)$', cpuinfo,
-                      flags=re.MULTILINE | re.IGNORECASE)
+    """Return the major Raspberry Pi version (1, 2, 3, 4 or 5), or None if
+    this is not a Raspberry Pi (or the board is too new to be known).
 
-    if not match:
-        # Couldn't find the hardware, assume it isn't a pi.
+    Note: the Pi Zero 2 W reports 3 (same SoC family as the Pi 3).
+    """
+    decoded = decode_revision(revision_code())
+    if decoded is None:
         return None
-    if match.group(1) == 'BCM2708':
-        # Pi 1
-        return 1
-    elif match.group(1) == 'BCM2709':
-        # Pi 2
-        return 2
-    elif match.group(1) == 'BCM2711':
-        # Pi 4
-        return 4
-    elif match.group(1) == 'BCM2835':
-        # 4.9+ kernel
-        (type,header) = get_model()
-        if type == 'Pi 2 Model B':
-            return 2
-        if type == 'Pi 3 Model B' or type == 'Pi 3 Model B+' or type == 'Pi 3 Model A+':
-            return 3
-        if type == 'Pi 4 Model B':
-            return 4
-        else:
-            return 1
-    else:
-        # Something else, not a pi.
-        return None
+    return decoded[1]
 
 
 header40 = """A+, B+ and Pi2 B, and Zero models
@@ -166,41 +234,17 @@ header26 = """A and B models
                          +=========+"""
 
 
-def get_model():
-    with open('/proc/cpuinfo', 'r') as infile:
-        cpuinfo = infile.read()
-    match = re.search('^Revision\s+:\s+\w+(\w{2})$', cpuinfo,
-                      flags=re.MULTILINE | re.IGNORECASE)
-    model = match.group(1)
-    
-    if model in ["07", "08", "09"]:
-        return "Model A", header26
-    
-    elif model in ["02", "03", "04", "05", "06", "0d", "0e", "0f"]:
-        return "Model B", header26
-    
-    elif model in ["12", "15"]:
-        return "Model A+", header40
-    
-    elif model in ["10", "13"]:
-        return "Model B+", header40
-    
-    elif model in ["40", "41", "42"]:
-        return "Pi 2 Model B", header40
-    
-    elif model in ["82", "83"]:
-        return "Pi 3 Model B", header40
-    
-    elif model in ["d3"]:
-        return "Pi 3 Model B+", header40
 
-    elif model in ["e0"]:
-        return "Pi 3 Model A+", header40
-    
-    elif model in ["11", "14"]:
-        return "Pi 4 Model B", header40
-    
-    elif model in ["92", "93", "c1", "20"]:
-        return "Pi Zero", header40
-    
-    raise RuntimeError('Could not determine Raspberry Pi model.')    
+
+def get_model():
+    """Return (model name, ascii header diagram) for this board."""
+    decoded = decode_revision(revision_code())
+    if decoded is None:
+        dt_model = device_tree_model()
+        if dt_model.startswith("Raspberry Pi"):
+            return dt_model, header40
+        raise RuntimeError('Could not determine Raspberry Pi model.')
+    model = decoded[0]
+    if model in HEADER26_MODELS:
+        return model, header26
+    return model, header40

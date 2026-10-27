@@ -1,0 +1,114 @@
+#!/bin/bash
+#
+# lightshowpi - one command for the common LightShow Pi tasks.
+#
+# Usage: lightshowpi <command> [options]
+#
+#   doctor [--config=FILE]       check the installation and configuration
+#   play FILE...                 play one or more songs with the lights
+#   playlist [PLAYLIST]          play a playlist once (default: from config)
+#   loop [PLAYLIST]              play a playlist forever
+#   start                        start the show configured in overrides.cfg
+#                                (same as bin/start_music_and_lights)
+#   stop                         stop the show and turn all lights off
+#   test                         interactive test of each light channel
+#   flash | fade | on | off      light tests (hardware_controller --state=...)
+#   pins                         show the pin chart and the WiringPi->BCM map
+#   playlist-generate DIR        write DIR/.playlist for the songs in DIR
+#   web                          start the web interface (microweb)
+#   version                      show version information
+#
+# The scripts in bin/ (start_music_and_lights, play, ...) still work as before.
+
+DIR="$( cd "$( dirname "$(readlink -f "${BASH_SOURCE[0]}")" )" && pwd )"
+. "$DIR/lightshowpi-env.sh"
+
+PY="${SYNCHRONIZED_LIGHTS_HOME}/py"
+cmd="$1"
+[ $# -gt 0 ] && shift
+
+usage() {
+    sed -n '3,21p' "$DIR/lightshowpi" | sed 's/^# \{0,1\}//'
+}
+
+playlist_from_config() {
+    "${LSP_PYTHON}" - <<'PYEOF'
+import sys
+sys.path.insert(0, __import__("os").environ["SYNCHRONIZED_LIGHTS_HOME"] + "/py")
+import configuration_manager
+print(configuration_manager.Configuration().lightshow.playlist_path)
+PYEOF
+}
+
+case "$cmd" in
+    doctor)
+        # runs as the current user so it can report permission problems
+        exec "${LSP_PYTHON}" "$PY/doctor.py" "$@"
+        ;;
+    play)
+        [ $# -eq 0 ] && { echo "Usage: lightshowpi play FILE..." >&2; exit 2; }
+        exec "$DIR/play" "$@"
+        ;;
+    playlist|loop)
+        PLAYLIST="${1:-$(playlist_from_config)}"
+        if [ ! -f "$PLAYLIST" ]; then
+            echo "Playlist not found: $PLAYLIST" >&2
+            echo "Create one with: lightshowpi playlist-generate /path/to/music" >&2
+            exit 1
+        fi
+        if [ "$cmd" = loop ]; then
+            exec "$DIR/start_playlist_loop" "$PLAYLIST"
+        fi
+        exec "$DIR/start_playlist_once" "$PLAYLIST"
+        ;;
+    start)
+        exec "$DIR/start_music_and_lights" "$@"
+        ;;
+    stop)
+        exec "$DIR/stop_music_and_lights" "$@"
+        ;;
+    test)
+        lsp_python "$PY/hardware_controller.py" --test "$@"
+        ;;
+    flash|fade|on|off|cleanup|random_pattern|dance|step|cylon)
+        lsp_python "$PY/hardware_controller.py" --state="$cmd" "$@"
+        ;;
+    pins)
+        exec "${LSP_PYTHON}" - <<'PYEOF'
+import os, sys
+sys.path.insert(0, os.environ["SYNCHRONIZED_LIGHTS_HOME"] + "/py")
+import Platform, gpio_backend
+try:
+    model, header = Platform.get_model()
+except RuntimeError:
+    model, header = "not a Raspberry Pi", Platform.header40
+print("Board: %s" % model)
+print(header)
+print("WiringPi pin -> BCM GPIO (use WiringPi numbers in gpio_pins unless pin_numbering = bcm)")
+for wpi, bcm in sorted(gpio_backend.WIRINGPI_TO_BCM.items()):
+    if wpi in (17, 18, 19, 20):
+        continue  # P5 header on original Model B only
+    print("  wPi %2d -> GPIO %2d" % (wpi, bcm))
+PYEOF
+        ;;
+    playlist-generate)
+        [ $# -eq 0 ] && { echo "Usage: lightshowpi playlist-generate /path/to/music" >&2; exit 2; }
+        exec "${LSP_PYTHON}" "${SYNCHRONIZED_LIGHTS_HOME}/tools/playlist_generator.py" "$@"
+        ;;
+    web)
+        exec "$DIR/start_microweb" "$@"
+        ;;
+    version)
+        echo "LightShow Pi $(cat "${SYNCHRONIZED_LIGHTS_HOME}/VERSION" 2>/dev/null || echo unknown)"
+        echo "Home:   ${SYNCHRONIZED_LIGHTS_HOME}"
+        echo "Python: ${LSP_PYTHON} ($("${LSP_PYTHON}" --version 2>&1))"
+        ;;
+    ""|-h|--help|help)
+        usage
+        ;;
+    *)
+        echo "Unknown command: $cmd" >&2
+        usage >&2
+        exit 2
+        ;;
+esac

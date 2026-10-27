@@ -50,7 +50,7 @@ class Command(object):
         if self.name not in _CMD_NAMES:
             raise ValueError(name + ' command not defined in configuration file')
         if self.name in Command.commands:
-            logging.warn(name + 'command is defined more than once, using last definition')
+            logging.warning(name + 'command is defined more than once, using last definition')
         self.func = func
         Command.commands[self.name] = self
 
@@ -253,7 +253,7 @@ def cmd_volume(*args):
                                      shell=True, stdout=subprocess.PIPE,
                                      stderr=subprocess.PIPE).communicate()
     if error:
-        logging.warn('volume request failed: ' + str(error))
+        logging.warning('volume request failed: ' + str(error))
 
         return 'volume request failed'
     else:

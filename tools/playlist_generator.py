@@ -32,7 +32,11 @@ file_types = [".wav",
 
 make_title = lambda s: s.replace("_", " ").replace(ext, "") + "\t"
 
-location = input("Enter the full path to the folder of songs:")
+# The folder can be given on the command line (lightshowpi playlist-generate DIR)
+if len(sys.argv) > 1:
+    location = os.path.abspath(sys.argv[1])
+else:
+    location = input("Enter the full path to the folder of songs:")
 
 if not os.path.exists(location):
     print ("Path does not exist")
@@ -47,7 +51,7 @@ for song in os.listdir(os.getcwd()):
     title = ""
     ext = os.path.splitext(song)[1]
 
-    if ext in file_types:
+    if ext.lower() in file_types:
         metadata = mutagen.File(song, easy=True)
 
         if metadata is not None:

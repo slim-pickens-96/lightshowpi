@@ -1,0 +1,8 @@
+# LED strip support (install.sh --with-led).
+# BiblioPixel's last release is from 2020 and it still imports distutils,
+# which Python 3.12 removed.  setuptools provides a distutils shim that makes
+# it work (verified with Python 3.11 and 3.13).
+BiblioPixel==3.4.46
+setuptools>=68,<85
+pyserial>=3.5
+pillow>=9
