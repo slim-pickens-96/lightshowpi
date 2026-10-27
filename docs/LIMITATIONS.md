@@ -48,7 +48,7 @@ All testing was done in containers/chroots and emulation, without a real Pi
 - **SMS (Twilio / Google Voice) and Twitter** code is unchanged legacy code.
   Those APIs have changed a lot since this code was written, and these
   features aren't expected to work without an update.
-- **Web UI (microweb)** uses the `cgi` module. On Python 3.13+ that comes from
+- **Web UI (microweb)** has been run and its buttons tested with simulated GPIO, but not on a Pi or on a phone. START also launches the SMS checker, which logs an error if SMS isn't installed. The web server is hard-coded to port 80, so it must run as root. It uses the `cgi` module. On Python 3.13+ that comes from
   `legacy-cgi`. A move to a small WSGI app would remove that dependency.
 - **`decoder.py`/`fileinfo.py`** are no longer needed. ffmpeg replaces them.
 

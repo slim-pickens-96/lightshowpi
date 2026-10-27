@@ -33,12 +33,12 @@ LIGHTSHOWPI_PYTHON=<venv>/bin/python <venv>/bin/python -m pytest -q tests
 
 | Environment | Result |
 |---|---|
-| Host, Python 3.11.17 | **141 passed** |
-| Host, Python 3.13.16 | **140 passed, 1 skipped** (audioop comparison; `audioop` doesn't exist on 3.13+) |
-| Host, Python 3.14.8 | **140 passed, 1 skipped** (same) |
-| bookworm chroot, apt Python 3.11.2 + the installed `.venv` | **120 passed, 21 skipped** (21 = shellcheck isn't installed in the chroot) |
-| trixie chroot, apt Python 3.13.5 + the installed `.venv` | **119 passed, 22 skipped** (shellcheck ×21, audioop ×1) |
-| trixie arm64 chroot (qemu), apt Python 3.13 + the installed `.venv` | **119 passed, 22 skipped** (shellcheck ×21, audioop ×1). Before the crash-loop fix, this run had 1 failure (see "Failed during testing"). |
+| Host, Python 3.11.17 | **150 passed** |
+| Host, Python 3.13.16 | **149 passed, 1 skipped** (audioop comparison; `audioop` doesn't exist on 3.13+) |
+| Host, Python 3.14.8 | **149 passed, 1 skipped** (same) |
+| bookworm chroot, apt Python 3.11.2 + the installed `.venv` | **120 passed, 21 skipped** (21 = shellcheck isn't installed in the chroot); run before the web tests were added |
+| trixie chroot, apt Python 3.13.5 + the installed `.venv` | **128 passed, 22 skipped** (shellcheck ×21, audioop ×1), including all 9 web tests |
+| trixie arm64 chroot (qemu), apt Python 3.13 + the installed `.venv` | **119 passed, 22 skipped** (shellcheck ×21, audioop ×1). Before the crash-loop fix, this run had 1 failure (see "Failed during testing"). Run before the web tests were added. |
 
 What the suite covers (`tests/`):
 
@@ -49,6 +49,7 @@ What the suite covers (`tests/`):
 | `test_audio.py` | ffmpeg decoder: WAV, mp3, mono→stereo, flac/ogg/m4a, missing file, non-audio file, missing ffmpeg message. `peak()` against its definition and against `audioop.max` (on 3.11 only). `alsa_compat` against old-style (0.8.x) and new-style (0.10+) pyalsaaudio fakes and the real `null` device. |
 | `test_config_and_hardware.py` | Config loading, `[hardware]` options, absolute `--config`. Hardware on/off/flash, `active_low_mode`, PWM. Expanders without WiringPi exit 2. CPU FFT finds a 440 Hz tone in the right channel. GPU fallback. |
 | `test_end_to_end.py` | Real `synchronized_lights.py` runs against the ALSA `null` device with the simulated GPIO back end. A noise-burst mp3 creates a `.sync` cache. The second, cached run switches all 8 channels and leaves them off and set as inputs. The repository's sample song plays. A missing song gives a clear error. `tools/sync_file_generator.py` output equals `synchronized_lights.py --createcache` output (`.sync` within 1e-5, `.cfg` identical). |
+| `test_web.py` | Each of the 5 web pages loads without errors. `PATH` has no `python` command, there is no `pi` user, and `overrides.cfg` is partial. The playlist page lists the sample songs. **Lights ON/OFF** set all 8 simulated pins, and the Tools page switches a single channel. Against the previous version of the pages, 5 of these 9 tests fail. |
 | `test_doctor_and_scripts.py` | `lightshowpi doctor` passes a good config and fails a bad pin, a config syntax error and a missing audio card. `bash -n` and `shellcheck -S warning` on all 21 shell scripts. Installer dry runs: bookworm and trixie accepted, bullseye refused as too old, Ubuntu refused unless `--allow-unsupported` is given, unknown option rejected. `uninstall.sh --dry-run`. CLI help/version/unknown command/pins. `bin/play` with spaces in the filename. Service wrapper: exits 2 on a config error, a missing playlist exits 2 without a traceback, the crash-loop guard stops after repeated quick failures, and SIGTERM exits 0. |
 
 ### Clean installs (real installer, real apt, no mocks)
@@ -86,6 +87,7 @@ Extra arm64 checks:
 | `shellcheck -x -S warning` on all 21 shell scripts | clean. At `info`/`style` level the only notes left are the intentional word splitting of package lists in `install.sh` and style notes in the upstream `bin/vol`. |
 | `bash -n` on all shell scripts | clean |
 | Copy of the project at `/tmp/lsp copy` (a space in the path): `bin/start_playlist_once "/tmp/pl dir/.playlist"` and `bin/play "/tmp/pl dir/t one.mp3"` | both exit 0, `.sync`/`.cfg` written |
+| Web interface run with `web/microweb/web_controls.py` (as root on port 80, simulated GPIO) and viewed in headless Chromium at phone width | All 5 pages render. **Lights ON/OFF**, a Tools channel switch, and **START** work: the show played the sample playlist, the page showed "Now Playing Deck the Halls by ovenrake", and the simulated pins changed. START also launches the SMS checker, which fails in the log when the optional SMS feature isn't installed (harmless). Reboot/Shutdown were not pressed. |
 | `tools/sync_file_generator.py` on a folder containing `My Song.mp3` | exit 0; writes `.sync`, `.cfg` and a playlist |
 | `tools/build_release.sh`, then `sha256sum -c`, extracting to `/tmp/rel`, `LSP_OS_RELEASE=<trixie os-release> ./install.sh --dry-run --with-service`, and pytest from the extracted tree (Python 3.13) | checksum OK; no `.venv`, `overrides.cfg`, `.sync` or cache files in the tarball; dry run exit 0 ("nothing was changed"); **140 passed, 1 skipped** |
 
@@ -104,6 +106,7 @@ a test.
 | Song tags containing shell characters were run by `songname_command` | String passed to the shell unescaped | `shlex.quote`; Python writes `now_playing.txt` |
 | `tools/sync_file_generator.py`: `ModuleNotFoundError: audio_decoder`. In upstream it also never wrote `.cfg`, so the show re-analysed every song anyway. | Import order; missing `save_config()` | Fixed, with a regression test comparing against `--createcache` |
 | arm64 test run: the service test timed out because `lightshowpi-service` restarted forever | With a real WiringPi 3.20 installed on a board it can't identify, the WiringPi library ends the process with exit code 1, so the wrapper kept retrying. A missing playlist also gave a traceback and exit 1. | Crash-loop guard: 5 quick failures in a row → exit 2. A missing playlist is a clear configuration error (exit 2). Both have tests. |
+| Web interface: the main page crashed when the volume couldn't be read or `overrides.cfg` was partial. Settings and Directory Play crashed without a `pi` user. The buttons ran `python`, which the clean bookworm/trixie installs don't have. | Upstream assumptions (the old installer created the `pi` user setup and `/usr/bin/python`); `overrides.cfg` read without `defaults.cfg` | Volume shows "n/a"; `defaults.cfg` is read first; files are owned by the install folder's owner; `sys.executable` is used. Covered by `test_web.py`. |
 | Old Raspberry Pi archive key `raspberrypi.gpg.key` rejected by apt on trixie ("SHA1 binding not secure since 2026-02-01") | Old key format | Use the `raspberrypi-archive-keyring` 2025.1 package. This only affects the test chroot; real Raspberry Pi OS already ships the keyring. |
 | `pip install pyalsaaudio` without headers → `alsa/asoundlib.h: No such file` | Missing `libasound2-dev` | The installer uses `python3-alsaaudio` from apt. `libasound2-dev` is only installed for the pip fallback. |
 
@@ -111,7 +114,6 @@ a test.
 
 | Item | Why |
 |---|---|
-| Web UI (microweb) in a browser | Only imports and the `legacy-cgi` dependency check were tested |
 | SMS (Twilio) and Twitter | Need accounts and network access, and the APIs have changed since upstream wrote this code |
 | The service actually starting at boot | No systemd in the sandbox. Only `systemd-analyze verify` and the wrapper's exit codes were tested. |
 | 32-bit (armhf) Raspberry Pi OS as the main OS | No armhf chroot was built. Only armhf libraries for the FM binaries were tested. |

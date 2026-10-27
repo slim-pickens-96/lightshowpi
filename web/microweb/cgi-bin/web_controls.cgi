@@ -11,6 +11,10 @@ import html
 import cgitb
 import os, stat
 import subprocess
+import shlex
+import sys
+
+PYTHON = shlex.quote(sys.executable)  # same Python as the web server (the .venv)
 import configparser
 from time import sleep
 
@@ -20,7 +24,14 @@ form = cgi.FieldStorage()
 message = form.getvalue("message", "")
 
 HOME_DIR = os.getenv("SYNCHRONIZED_LIGHTS_HOME")
-volume = subprocess.check_output([HOME_DIR + '/bin/vol'],shell=True).decode()
+# The volume can't always be read (no mixer control, USB/HDMI-only audio);
+# don't let that break the whole page.
+try:
+    volume = subprocess.check_output([HOME_DIR + '/bin/vol'], stderr=subprocess.DEVNULL).decode().strip()
+    int(volume)
+except (subprocess.CalledProcessError, OSError, ValueError):
+    volume = "n/a"
+
 
 state_file = HOME_DIR + '/web/microweb/config/webstate.cfg'
 state = configparser.RawConfigParser()
@@ -37,7 +48,9 @@ else:
 
 cfg_file = HOME_DIR + '/config/' + config_file
 cfg = configparser.RawConfigParser()
-cfg.read_file(open(cfg_file))
+# overrides only hold the changed settings; read defaults.cfg first
+cfg.read_file(open(HOME_DIR + '/config/defaults.cfg'))
+cfg.read(cfg_file)
 lightshowmode = cfg.get('lightshow','mode')
 lightshowstc = cfg.get('lightshow','stream_command_string')
 
@@ -48,13 +61,13 @@ if lightshowmode == "stream-in" and lightshowstc == "pianobar":
         os.system('mkfifo /root/.config/pianobar/ctl')
 
 if message:
-    if message == "Volume -":
+    if message == "Volume -" and volume != "n/a":
         if int(volume) - 5 < 0:
             volume = "0"
         else:
             volume = str(int(volume) - 5)
         os.system(HOME_DIR + '/bin/vol ' + volume)
-    if message == "Volume +":
+    if message == "Volume +" and volume != "n/a":
         if int(volume) + 5 > 100:
             volume = "100"
         else:
@@ -63,11 +76,11 @@ if message:
     if message == "On":
         os.system('pkill -f "bash $SYNCHRONIZED_LIGHTS_HOME/bin"')
         os.system('pkill -f "python $SYNCHRONIZED_LIGHTS_HOME/py"')
-        os.system("python ${SYNCHRONIZED_LIGHTS_HOME}/py/hardware_controller.py " + config_param + "--state=on")
+        os.system(PYTHON + " ${SYNCHRONIZED_LIGHTS_HOME}/py/hardware_controller.py " + config_param + "--state=on")
     if message == "Off":
         os.system('pkill -f "bash $SYNCHRONIZED_LIGHTS_HOME/bin"')
         os.system('pkill -f "python $SYNCHRONIZED_LIGHTS_HOME/py"')
-        os.system("python ${SYNCHRONIZED_LIGHTS_HOME}/py/hardware_controller.py " + config_param + "--state=off")
+        os.system(PYTHON + " ${SYNCHRONIZED_LIGHTS_HOME}/py/hardware_controller.py " + config_param + "--state=off")
         sleep(2)
     if message == "Next" and lightshowmode == "playlist":
         os.system('pkill -f "python $SYNCHRONIZED_LIGHTS_HOME/py"')

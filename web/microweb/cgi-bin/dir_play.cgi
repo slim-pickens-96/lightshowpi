@@ -16,13 +16,17 @@ import subprocess
 import configparser
 import mutagen
 import re
+import shlex
 from time import sleep
 
 import pwd
 import grp
 
-uid = pwd.getpwnam("pi").pw_uid
-gid = grp.getgrnam("pi").gr_gid
+# Files written by the web UI belong to whoever owns the LightShow Pi folder
+# (Raspberry Pi OS no longer has a default "pi" user).
+_owner = os.stat(os.getenv("SYNCHRONIZED_LIGHTS_HOME") or
+                 os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+uid, gid = _owner.st_uid, _owner.st_gid
 
 file_types = [".wav", ".mp1", ".mp2", ".mp3", ".mp4", ".m4a", ".m4b", ".ogg", ".flac", ".oga", ".wma", ".wmv", ".aif"]
 
@@ -84,7 +88,7 @@ else:
 if songplay:
     os.system('pkill -f "bash $SYNCHRONIZED_LIGHTS_HOME/bin"')
     os.system('pkill -f "python $SYNCHRONIZED_LIGHTS_HOME/py"')
-    os.popen('python ${SYNCHRONIZED_LIGHTS_HOME}/py/synchronized_lights.py --file="' + playlist_dir + '/' + songplay + '" &')
+    os.popen(shlex.quote(sys.executable) + ' ${SYNCHRONIZED_LIGHTS_HOME}/py/synchronized_lights.py --file=' + shlex.quote(playlist_dir + '/' + songplay) + ' &')
 
 if message == 'Start':
     os.system('rm $SYNCHRONIZED_LIGHTS_HOME/config/state.cfg')

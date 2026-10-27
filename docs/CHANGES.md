@@ -44,7 +44,7 @@ Each change below is tied to a problem listed in the Phase 1 report and in
 | `config/overrides.cfg.example` | Commented starting point for user settings. |
 | `requirements/*.txt` | Pip lists for the core packages, the fallback when apt packages are missing, LED, SMS and development/tests. |
 | `tools/build_release.sh` | Builds a release tarball and its SHA-256 from committed files (see [PACKAGING.md](PACKAGING.md)). |
-| `tests/` | pytest suite with about 140 tests (see [TEST_REPORT.md](TEST_REPORT.md)). |
+| `tests/` | pytest suite with about 150 tests (see [TEST_REPORT.md](TEST_REPORT.md)). |
 | `docs/` | Install, troubleshooting, changes, test report, limitations and packaging. |
 | `VERSION` | `3.2.0-modernized`. |
 
@@ -66,7 +66,7 @@ Each change below is tied to a problem listed in the Phase 1 report and in
 | `bin/get_free`, `bin/get_swap` | Updated for the current `free` output format, and quoting fixed. |
 | Other `bin/*` scripts | Use `lightshowpi-env.sh` and no longer require `SYNCHRONIZED_LIGHTS_HOME` or `/usr/bin/python`. All pass `shellcheck`. |
 | `web/microweb/CGIHTTPServer_root.py` | Runs CGI scripts with the same Python as the server (`sys.executable`). |
-| `web/microweb/cgi-bin/*.cgi` | `python3` shebangs; raw-string regex in `dir_play.cgi`. The `cgi` module comes from `python3-legacy-cgi` on Python 3.13+. |
+| `web/microweb/cgi-bin/*.cgi` | `python3` shebangs; raw-string regex in `dir_play.cgi`. The `cgi` module comes from `python3-legacy-cgi` on Python 3.13+. Buttons run the server's own Python (`sys.executable`) instead of `python`, which doesn't exist on bookworm/trixie. The main page reads `defaults.cfg` before your overrides and shows the volume as "n/a" instead of crashing when it can't be read. Settings and Directory Play make uploaded files belong to the install folder's owner instead of the user `pi`. Song paths in Directory Play are shell-quoted. |
 | `.gitignore` | Ignores `.venv`, `dist/`, logs, caches and generated `.sync`/`.cfg` files. |
 | `README.md` | Rewritten for this release. Credits and release history are kept. |
 

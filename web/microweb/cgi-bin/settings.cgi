@@ -18,8 +18,11 @@ from time import sleep
 import pwd
 import grp
 
-uid = pwd.getpwnam("pi").pw_uid
-gid = grp.getgrnam("pi").gr_gid
+# Files written by the web UI belong to whoever owns the LightShow Pi folder
+# (Raspberry Pi OS no longer has a default "pi" user).
+_owner = os.stat(os.getenv("SYNCHRONIZED_LIGHTS_HOME") or
+                 os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+uid, gid = _owner.st_uid, _owner.st_gid
 
 file_types = [".wav", ".mp1", ".mp2", ".mp3", ".mp4", ".m4a", ".m4b", ".ogg", ".flac", ".oga", ".wma", ".wmv", ".aif"]
 
@@ -225,9 +228,9 @@ if message:
     if message == 'Show Config':
 
         if config_param:
-            proc = subprocess.Popen(["python", HOME_DIR + "/py/configuration_manager.py", config_param], stdout=subprocess.PIPE)
+            proc = subprocess.Popen([sys.executable, HOME_DIR + "/py/configuration_manager.py", config_param], stdout=subprocess.PIPE)
         else:
-            proc = subprocess.Popen(["python", HOME_DIR + "/py/configuration_manager.py"], stdout=subprocess.PIPE)
+            proc = subprocess.Popen([sys.executable, HOME_DIR + "/py/configuration_manager.py"], stdout=subprocess.PIPE)
         out = proc.communicate()[0]
         print ('<pre>')
         print (out.decode())

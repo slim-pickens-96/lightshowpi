@@ -244,6 +244,15 @@ The `cgi` module was removed in Python 3.13. The installer adds
 `python3-legacy-cgi` (or the `legacy-cgi` pip package). `lightshowpi doctor`
 reports `Web interface (legacy-cgi)`.
 
+### Web interface: buttons do nothing, or a page shows a Python error
+
+Older versions ran `python ...` (missing on bookworm/trixie), expected a user
+called `pi`, and crashed if `overrides.cfg` didn't contain every setting or the
+volume couldn't be read. All four are fixed. Start the interface with
+`lightshowpi web`, then open `http://<pi-address>/` (port 80). If the volume
+shows "n/a", `bin/vol` couldn't find a mixer control for your sound card. The
+show still works.
+
 ### LED strips: `No module named 'distutils'`
 
 BiblioPixel 3.4.46 (last released 2020) imports `distutils`, which was removed
