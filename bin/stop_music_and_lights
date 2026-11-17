@@ -24,7 +24,7 @@ for OUTPUT in $(pgrep -f lightshowpi); do
         # daemon is the one that runs this script to stop the show; without
         # this it would kill itself.  Stop the daemon separately with
         # "lightshowpi schedule stop".)
-        if [[ ${out} == *"${SYNCHRONIZED_LIGHTS_HOME}"* ]] && [[ ${out} != *"web"* ]] && [[ ${out} != *"scheduler"* ]]; then
+        if [[ ${out} == *"${SYNCHRONIZED_LIGHTS_HOME}"* ]] && [[ ${out} != *"web"* ]] && [[ ${out} != *"schedule"* ]]; then
             echo "killing:"
             echo  "${out}"
             lsp_sudo kill "${OUTPUT}"
