@@ -19,7 +19,12 @@ for OUTPUT in $(pgrep -f lightshowpi); do
     if [ "${OUTPUT}" != "${id}" ] && [ "${OUTPUT}" != $$ ]; then
         out=$(ps -p "${OUTPUT}" -o cmd)
 
-        if [[ ${out} == *"${SYNCHRONIZED_LIGHTS_HOME}"* ]] && [[ ${out} != *"web"* ]]; then
+        # The web interface and the scheduler daemon are never part of the
+        # show, so stopping the show must not kill them.  (The scheduler
+        # daemon is the one that runs this script to stop the show; without
+        # this it would kill itself.  Stop the daemon separately with
+        # "lightshowpi schedule stop".)
+        if [[ ${out} == *"${SYNCHRONIZED_LIGHTS_HOME}"* ]] && [[ ${out} != *"web"* ]] && [[ ${out} != *"schedule"* ]]; then
             echo "killing:"
             echo  "${out}"
             lsp_sudo kill "${OUTPUT}"

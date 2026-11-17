@@ -204,6 +204,7 @@ bin/stop_microweb                 # stop it
 | Directory Play | Choose, create or upload a music folder, edit song names, and play or loop that folder |
 | Settings (gear icon) | Edit songs, upload a song into the playlist folder, show the config, choose which config file to use |
 | Tools (tools icon) | Switch each channel on or off; reboot or shut down the Pi |
+| Schedule | Show and edit the built-in daily scheduler (steady lights and show times); see [SCHEDULER.md](SCHEDULER.md) |
 
 Notes:
 
@@ -258,6 +259,14 @@ at boot has not been tested.
 **cron (like the original):** `crontab/synchronized_lights` has examples that
 start the show at 6:30 pm and stop it at 10:15 pm. Add them with
 `sudo crontab -e`.
+
+**Built-in scheduler:** the `[schedule]` section of `config/overrides.cfg`
+runs the steady lights and the show on a daily timetable with no cron at
+all (default: lights on 16:45, show 18:30-22:15, lights off 23:59, daily;
+off until `enabled = True`). Start it with `lightshowpi schedule start`,
+or at boot with the `lightshowpi-scheduler` service. The Schedule page of
+the web interface edits the same settings. Full details:
+[SCHEDULER.md](SCHEDULER.md). Use the scheduler or cron, not both.
 
 ### Running without sudo
 

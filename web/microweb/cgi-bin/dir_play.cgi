@@ -86,21 +86,21 @@ else:
     dirplay_path = playlist_dir
     
 if songplay:
-    os.system('pkill -f "bash $SYNCHRONIZED_LIGHTS_HOME/bin"')
-    os.system('pkill -f "python $SYNCHRONIZED_LIGHTS_HOME/py"')
-    os.popen(shlex.quote(sys.executable) + ' ${SYNCHRONIZED_LIGHTS_HOME}/py/synchronized_lights.py --file=' + shlex.quote(playlist_dir + '/' + songplay) + ' &')
+    os.system('pkill -f "[s]tart_music_and_lights|[p]lay_sms|[c]heck_sms"')
+    os.system('pkill -f "[s]ynchronized_lights.py|[h]ardware_controller.py"')
+    os.popen(shlex.quote(sys.executable) + ' ${SYNCHRONIZED_LIGHTS_HOME}/py/synchronized_lights.py --file=' + shlex.quote(playlist_dir + '/' + songplay) + ' > /dev/null 2>&1 &')
 
 if message == 'Start':
     os.system('rm $SYNCHRONIZED_LIGHTS_HOME/config/state.cfg')
-    os.system('pkill -f "bash $SYNCHRONIZED_LIGHTS_HOME/bin"')
-    os.system('pkill -f "python $SYNCHRONIZED_LIGHTS_HOME/py"')
-    os.popen("${SYNCHRONIZED_LIGHTS_HOME}/bin/start_playlist_loop " + playlist_dir + '/.playlist' + " &")
+    os.system('pkill -f "[s]tart_music_and_lights|[p]lay_sms|[c]heck_sms"')
+    os.system('pkill -f "[s]ynchronized_lights.py|[h]ardware_controller.py"')
+    os.popen("${SYNCHRONIZED_LIGHTS_HOME}/bin/start_playlist_loop " + playlist_dir + '/.playlist' + " > /dev/null 2>&1 &")
 
 if message == 'Start Once':
     os.system('rm $SYNCHRONIZED_LIGHTS_HOME/config/state.cfg')
-    os.system('pkill -f "bash $SYNCHRONIZED_LIGHTS_HOME/bin"')
-    os.system('pkill -f "python $SYNCHRONIZED_LIGHTS_HOME/py"')
-    os.popen("${SYNCHRONIZED_LIGHTS_HOME}/bin/start_playlist_once " + playlist_dir + '/.playlist' + " &")
+    os.system('pkill -f "[s]tart_music_and_lights|[p]lay_sms|[c]heck_sms"')
+    os.system('pkill -f "[s]ynchronized_lights.py|[h]ardware_controller.py"')
+    os.popen("${SYNCHRONIZED_LIGHTS_HOME}/bin/start_playlist_once " + playlist_dir + '/.playlist' + " > /dev/null 2>&1 &")
 
 print ("Content-type: text/html")
 print
@@ -285,8 +285,8 @@ if updown:
 if message:
 
     if message == "Stop":
-        os.system('pkill -f "bash $SYNCHRONIZED_LIGHTS_HOME/bin"')
-        os.system('pkill -f "python $SYNCHRONIZED_LIGHTS_HOME/py"')
+        os.system('pkill -f "[s]tart_music_and_lights|[p]lay_sms|[c]heck_sms"')
+        os.system('pkill -f "[s]ynchronized_lights.py|[h]ardware_controller.py"')
 
     if message == 'Edit Songs':
         checkedfiles = []

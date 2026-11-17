@@ -105,6 +105,7 @@ class Configuration(object):
             self.network = None
             self.fm = None
             self.terminal = None
+            self.schedule = None
             self.led = None
             self.configs = None
 
@@ -115,6 +116,7 @@ class Configuration(object):
             self.set_audio_processing()
             self.set_network()
             self.set_terminal()
+            self.set_schedule()
             self.set_custom_sequences()
         else:
             self.sms = None
@@ -258,6 +260,25 @@ class Configuration(object):
         term = dict()
         term["enabled"] = self.config.getboolean('terminal', 'enabled')
         self.terminal = Section(term)
+
+    def set_schedule(self):
+        """
+        Retrieves the built-in scheduler configuration ([schedule] section).
+        Missing keys fall back to the defaults, so an older overrides.cfg
+        without a [schedule] section still works (the schedule is off).
+        """
+        sched = dict()
+        section = 'schedule'
+        sched["enabled"] = self.config.getboolean(section, 'enabled',
+                                                  fallback=False)
+        sched["days"] = self.config.get(section, 'days', fallback='daily')
+        sched["lights_on"] = self.config.get(section, 'lights_on', fallback='')
+        sched["show_start"] = self.config.get(section, 'show_start',
+                                              fallback='')
+        sched["show_stop"] = self.config.get(section, 'show_stop', fallback='')
+        sched["lights_off"] = self.config.get(section, 'lights_off',
+                                              fallback='')
+        self.schedule = Section(sched)
 
     def set_custom_sequences(self):
         scs = dict()
@@ -915,4 +936,8 @@ if __name__ == "__main__":
     print("\nTerminal Configuration")
     for tkey, tvalue in cm.terminal.config.items(): 
         print(tkey, "=", tvalue)
+
+    print("\nSchedule Configuration")
+    for skey, svalue in cm.schedule.config.items():
+        print(skey, "=", svalue)
 

@@ -74,25 +74,25 @@ if message:
             volume = str(int(volume) + 5)
         os.system(HOME_DIR + '/bin/vol ' + volume)
     if message == "On":
-        os.system('pkill -f "bash $SYNCHRONIZED_LIGHTS_HOME/bin"')
-        os.system('pkill -f "python $SYNCHRONIZED_LIGHTS_HOME/py"')
+        os.system('pkill -f "[s]tart_music_and_lights|[p]lay_sms|[c]heck_sms"')
+        os.system('pkill -f "[s]ynchronized_lights.py|[h]ardware_controller.py"')
         os.system(PYTHON + " ${SYNCHRONIZED_LIGHTS_HOME}/py/hardware_controller.py " + config_param + "--state=on")
     if message == "Off":
-        os.system('pkill -f "bash $SYNCHRONIZED_LIGHTS_HOME/bin"')
-        os.system('pkill -f "python $SYNCHRONIZED_LIGHTS_HOME/py"')
+        os.system('pkill -f "[s]tart_music_and_lights|[p]lay_sms|[c]heck_sms"')
+        os.system('pkill -f "[s]ynchronized_lights.py|[h]ardware_controller.py"')
         os.system(PYTHON + " ${SYNCHRONIZED_LIGHTS_HOME}/py/hardware_controller.py " + config_param + "--state=off")
         sleep(2)
     if message == "Next" and lightshowmode == "playlist":
-        os.system('pkill -f "python $SYNCHRONIZED_LIGHTS_HOME/py"')
+        os.system('pkill -f "[s]ynchronized_lights.py|[h]ardware_controller.py"')
         sleep(1)
     if message == "Next" and lightshowmode == "stream-in" and lightshowstc == "pianobar":
         os.system('echo -n "n" > /root/.config/pianobar/ctl')
         sleep(1)
     if message == "Start":
-        os.system('pkill -f "bash $SYNCHRONIZED_LIGHTS_HOME/bin"')
-        os.system('pkill -f "python $SYNCHRONIZED_LIGHTS_HOME/py"')
-        os.popen("${SYNCHRONIZED_LIGHTS_HOME}/bin/play_sms " + config_param + "&")
-        os.popen("${SYNCHRONIZED_LIGHTS_HOME}/bin/check_sms " + config_param + "&")
+        os.system('pkill -f "[s]tart_music_and_lights|[p]lay_sms|[c]heck_sms"')
+        os.system('pkill -f "[s]ynchronized_lights.py|[h]ardware_controller.py"')
+        subprocess.Popen([os.path.expandvars("${SYNCHRONIZED_LIGHTS_HOME}/bin/play_sms")] + config_param.split(), stdin=subprocess.DEVNULL, stdout=open("/tmp/lightshowpi-show.log", "ab"), stderr=subprocess.STDOUT, start_new_session=True, close_fds=True)
+        subprocess.Popen([os.path.expandvars("${SYNCHRONIZED_LIGHTS_HOME}/bin/check_sms")] + config_param.split(), stdin=subprocess.DEVNULL, stdout=open("/tmp/lightshowpi-show.log", "ab"), stderr=subprocess.STDOUT, start_new_session=True, close_fds=True)
         sleep(1)
 
 print ("Content-type: text/html")
@@ -127,6 +127,10 @@ print ("""
             </form>
             </td></tr>
             </table>
+
+            <form method="post" action="schedule.cgi">
+                <input id="playlist" type="submit" value="Schedule">
+            </form>
 
             <div id="voldiv">
             <form method="post" action="web_controls.cgi">

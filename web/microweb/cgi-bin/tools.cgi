@@ -33,15 +33,15 @@ message = form.getvalue("message", "")
 
 if message:
     if message == 'Shutdown':
-        os.system('pkill -f "bash $SYNCHRONIZED_LIGHTS_HOME/bin"')
-        os.system('pkill -f "python $SYNCHRONIZED_LIGHTS_HOME/py"')
+        os.system('pkill -f "[s]tart_music_and_lights|[p]lay_sms|[c]heck_sms"')
+        os.system('pkill -f "[s]ynchronized_lights.py|[h]ardware_controller.py"')
         os.system('pkill -f "chromium"')
         sleep(2.0)
 #        hc.turn_off_lights()
         os.system("shutdown -h now")
     if message == 'Reboot':
-        os.system('pkill -f "bash $SYNCHRONIZED_LIGHTS_HOME/bin"')
-        os.system('pkill -f "python $SYNCHRONIZED_LIGHTS_HOME/py"')
+        os.system('pkill -f "[s]tart_music_and_lights|[p]lay_sms|[c]heck_sms"')
+        os.system('pkill -f "[s]ynchronized_lights.py|[h]ardware_controller.py"')
         os.system('pkill -f "chromium"')
         sleep(2.0)
 #        hc.turn_off_lights()
@@ -49,14 +49,14 @@ if message:
 
 if channelon:
     hc.initialize(False)
-    os.system('pkill -f "bash $SYNCHRONIZED_LIGHTS_HOME/bin"')
-    os.system('pkill -f "python $SYNCHRONIZED_LIGHTS_HOME/py"')
+    os.system('pkill -f "[s]tart_music_and_lights|[p]lay_sms|[c]heck_sms"')
+    os.system('pkill -f "[s]ynchronized_lights.py|[h]ardware_controller.py"')
     hc.set_light(int(channelon)-1,False,1.0)
 
 if channeloff:
     hc.initialize(False)
-    os.system('pkill -f "bash $SYNCHRONIZED_LIGHTS_HOME/bin"')
-    os.system('pkill -f "python $SYNCHRONIZED_LIGHTS_HOME/py"')
+    os.system('pkill -f "[s]tart_music_and_lights|[p]lay_sms|[c]heck_sms"')
+    os.system('pkill -f "[s]ynchronized_lights.py|[h]ardware_controller.py"')
     hc.set_light(int(channeloff)-1,False,0.0)
 
 

@@ -46,3 +46,15 @@ frequency = 107.7
 [audio_processing]
 # CPU FFT (works on every Pi).  Only the Pi 1/2/3/Zero GPU can do use_gpu = True.
 use_gpu = False
+
+[schedule]
+# Built-in daily scheduler (see docs/SCHEDULER.md).  Off by default.
+# Steady lights on 4:45 pm, show 6:30-10:15 pm, lights off 11:59 pm, daily.
+# Start the daemon with:  lightshowpi schedule start
+# Or at boot with:  sudo systemctl enable --now lightshowpi-scheduler
+#enabled = True
+#days = daily
+#lights_on = 16:45
+#show_start = 18:30
+#show_stop = 22:15
+#lights_off = 23:59
