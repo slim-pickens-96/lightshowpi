@@ -16,6 +16,7 @@
 #   pins                         show the pin chart and the WiringPi->BCM map
 #   playlist-generate DIR        write DIR/.playlist for the songs in DIR
 #   web                          start the web interface (microweb)
+#   schedule start|stop|status   run the built-in daily scheduler (see docs/SCHEDULER.md)
 #   version                      show version information
 #
 # The scripts in bin/ (start_music_and_lights, play, ...) still work as before.
@@ -28,7 +29,7 @@ cmd="$1"
 [ $# -gt 0 ] && shift
 
 usage() {
-    sed -n '3,21p' "$DIR/lightshowpi" | sed 's/^# \{0,1\}//'
+    sed -n '3,22p' "$DIR/lightshowpi" | sed 's/^# \{0,1\}//'
 }
 
 playlist_from_config() {
@@ -97,6 +98,36 @@ PYEOF
         ;;
     web)
         exec "$DIR/start_microweb" "$@"
+        ;;
+    schedule)
+        sub="$1"
+        [ $# -gt 0 ] && shift
+        case "$sub" in
+            start)
+                # foreground daemon; under systemd this is the service's
+                # main process group, under a shell use "schedule stop"
+                # or Ctrl-C to stop it
+                lsp_python "$PY/scheduler.py" "$@"
+                ;;
+            stop)
+                lsp_python "$PY/scheduler.py" --stop
+                ;;
+            status)
+                lsp_python "$PY/scheduler.py" --status "$@"
+                ;;
+            ""|-h|--help|help)
+                echo "Usage: lightshowpi schedule start|stop|status" >&2
+                echo "  start   run the scheduler daemon (foreground)" >&2
+                echo "  stop    stop a running scheduler daemon" >&2
+                echo "  status  show the schedule and the next actions" >&2
+                exit 2
+                ;;
+            *)
+                echo "Unknown schedule command: $sub" >&2
+                echo "Usage: lightshowpi schedule start|stop|status" >&2
+                exit 2
+                ;;
+        esac
         ;;
     version)
         echo "LightShow Pi $(cat "${SYNCHRONIZED_LIGHTS_HOME}/VERSION" 2>/dev/null || echo unknown)"

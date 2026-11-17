@@ -10,6 +10,25 @@ detection and error handling.
 Each change below is tied to a problem listed in the Phase 1 report and in
 [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
+## Built-in scheduler (not yet released)
+
+The show and the steady lights can now run on a daily timetable without
+hand-edited cron.  See [SCHEDULER.md](SCHEDULER.md).  Defaults (off until
+`enabled = True`): steady lights on 16:45, show 18:30-22:15, lights off
+23:59, every day.
+
+| File | Purpose |
+|---|---|
+| `py/scheduler.py` | The daemon and the scheduling logic.  Checks the clock every 30 seconds, fires each action once a day through the existing entry points (`hardware_controller.py --state=on|off`, `bin/start_music_and_lights`, `bin/stop_music_and_lights`), records what fired in `logs/scheduler-state.json` so a restart does not refire, and never fires retroactively (an action more than ~90 seconds late is skipped).  `lightshowpi schedule start|stop|status` runs it. |
+| `config/defaults.cfg` | New `[schedule]` section (disabled by default) with the times above. |
+| `config/overrides.cfg.example` | Commented `[schedule]` example. |
+| `py/configuration_manager.py` | `Configuration().schedule` reads the `[schedule]` section, with fallbacks so older config files still work. |
+| `bin/lightshowpi` | New `schedule start|stop|status` subcommand. |
+| `install-scripts/lightshowpi-scheduler.service` | systemd unit that runs the daemon at boot.  Installed by hand (see SCHEDULER.md); the installer does not add it yet. |
+| `web/microweb/cgi-bin/schedule.cgi` | Schedule page for the web interface: shows the schedule, whether the daemon is running and the next actions, and saves edits to `config/overrides.cfg` with server-side validation.  Linked from the main controls page. |
+| `tests/test_scheduler.py` | 43 tests: time/day parsing, once-per-day firing (including across a restart), no retroactive firing, validation, the CLI subcommand and the web page. |
+| `bin/stop_music_and_lights` | One guard added: it no longer kills the scheduler daemon (or the web interface) when it stops the show.  `lightshowpi stop` still stops the show; the daemon is stopped separately with `lightshowpi schedule stop`. |
+
 ## Compatibility decisions
 
 | Decision | Why |

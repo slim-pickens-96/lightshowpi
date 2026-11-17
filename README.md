@@ -41,6 +41,7 @@ lightshowpi playlist               # plays the sample songs
 | Guide | Contents |
 |---|---|
 | [docs/INSTALL.md](docs/INSTALL.md) | Requirements and supported hardware, installation, first run, pin numbers, audio, configuring a show, commands, autostart, upgrading, uninstalling |
+| [docs/SCHEDULER.md](docs/SCHEDULER.md) | Built-in daily scheduler: steady lights and the show on a timetable, without cron |
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Fixes for common installation and runtime problems |
 | [docs/CHANGES.md](docs/CHANGES.md) | What changed and why (compatibility decisions, file-by-file) |
 | [docs/TEST_REPORT.md](docs/TEST_REPORT.md) | What was tested, how, and the results |

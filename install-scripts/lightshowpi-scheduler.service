@@ -1,0 +1,41 @@
+# LightShow Pi built-in scheduler service.  Installed by hand (the
+# installer does not add it yet):
+#
+#   sudo cp install-scripts/lightshowpi-scheduler.service \
+#           /etc/systemd/system/lightshowpi-scheduler.service
+#   sudo sed -i "s|@INSTALL_DIR@|$(pwd)|g" \
+#           /etc/systemd/system/lightshowpi-scheduler.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now lightshowpi-scheduler
+#
+# Uses the [schedule] section of config/overrides.cfg (see
+# docs/SCHEDULER.md).  The daemon checks the clock every 30 seconds and
+# fires each scheduled action once a day.  Edit the schedule in
+# config/overrides.cfg or on the Schedule page of the web interface; the
+# daemon picks changes up without a restart.
+#
+#   sudo systemctl stop lightshowpi-scheduler   stop the daemon
+#   sudo systemctl disable lightshowpi-scheduler   don't start at boot
+#   journalctl -u lightshowpi-scheduler        see messages
+#   tail -f logs/scheduler.log                 same log, in the install folder
+#
+# Stopping this service does NOT stop a show that is already playing; use
+# "lightshowpi stop" for that.  It also does not turn the lights off.
+[Unit]
+Description=LightShow Pi built-in daily scheduler
+After=sound.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=SYNCHRONIZED_LIGHTS_HOME=@INSTALL_DIR@
+ExecStart=@INSTALL_DIR@/bin/lightshowpi schedule start
+Restart=on-failure
+# exit code 2 = configuration error (schedule disabled or invalid):
+# fix the [schedule] section, don't restart forever
+RestartPreventExitStatus=2
+RestartSec=10
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

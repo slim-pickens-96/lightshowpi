@@ -128,6 +128,10 @@ print ("""
             </td></tr>
             </table>
 
+            <form method="post" action="schedule.cgi">
+                <input id="playlist" type="submit" value="Schedule">
+            </form>
+
             <div id="voldiv">
             <form method="post" action="web_controls.cgi">
                 <input id="volDown" type="submit" name="message" value="Volume -">
