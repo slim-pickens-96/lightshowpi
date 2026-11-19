@@ -77,7 +77,7 @@ print ("""
 if itemnext:
     itemnext -= 1
 else:
-    itemnext = int(cm.get_state('song_to_play', "0"))
+    itemnext = int(cm.get_state('current_song', "0"))
 
 with open(cm.lightshow.playlist_path, 'r') as playlist_fp:
     fcntl.lockf(playlist_fp, fcntl.LOCK_SH)
